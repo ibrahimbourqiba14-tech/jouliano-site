@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jouliano Gaming Lounge</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAsQuRNiPGi85FwulwGrmTraHTr3wZ9eTI",
+      authDomain: "jouliano-cafe.firebaseapp.com",
+      projectId: "jouliano-cafe",
+      storageBucket: "jouliano-cafe.firebasestorage.app",
+      messagingSenderId: "823101351872",
+      appId: "1:823101351872:web:c791880d3eee529e3d0a25"
+    };
+
+    const fbApp = initializeApp(firebaseConfig);
+    const db = getFirestore(fbApp);
+    const stateRef = doc(db, "jouliano", "state");
+
+    window.__firestore = { db, stateRef, setDoc, getDoc, onSnapshot };
+    window.dispatchEvent(new CustomEvent('firebase-ready'));
+  </script>
+  <style>
+    body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+    .cyber-grid { background-image: linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px); background-size: 20px 20px; }
+  </style>
+</head>
+<body class="cyber-grid min-h-screen p-3 sm:p-6 select-none">
+
+  <!-- شاشة تحميل أولية -->
+  <div id="loading-overlay" class="fixed inset-0 bg-slate-950 z-[9999] flex flex-col items-center justify-center gap-4">
+    <div class="text-4xl animate-pulse">🎮</div>
+    <p class="text-cyan-400 text-sm">جاري تحميل بيانات المحل...</p>
+  </div>
+
+  <!-- مؤشر حالة الاتصال بقاعدة البيانات -->
+  <div id="sync-status" class="fixed top-2 left-2 z-[9998] text-[10px] px-2 py-1 rounded-full border bg-slate-900/90 text-gray-400 border-slate-700">
+    ⏳ جاري الاتصال...
+  </div>
+
+  <!-- رأس الموقع -->
+  <header class="max-w-6xl mx-auto mb-6 text-center bg-gradient-to-r from-purple-900/40 via-blue-900/40 to-cyan-900/40 p-4 sm:p-6 rounded-2xl border border-cyan-500/30 shadow-lg backdrop-blur-md">
+    <div class="flex items-center justify-center gap-3 mb-2">
+      <span class="text-3xl sm:text-4xl animate-pulse">🎮</span>
+      <h1 class="text-3xl sm:text-5xl font-black tracking-wider" style="color:#22d3ee; background:linear-gradient(to right,#22d3ee,#c084fc); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;">
+        JOULIANO
+      </h1>
+    </div>
+    <p class="text-cyan-300/80 text-sm sm:text-base font-medium">محل بلايستيشن — تابع أجهزتك ووقتك وطلباتك لحظة بلحظة</p>
+  </header>
+
+  <!-- لوحة المؤشرات -->
+  <div class="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+    <div class="bg-slate-900/80 border border-cyan-500/30 rounded-xl p-4 text-center shadow-lg">
+      <p class="text-xs text-gray-400 mb-1">تعمل الآن</p>
+      <p id="active-count" class="text-2xl font-bold text-cyan-400">0</p>
+    </div>
+    <div class="bg-slate-900/80 border border-cyan-500/30 rounded-xl p-4 text-center shadow-lg">
+      <p class="text-xs text-gray-400 mb-1">إجمالي الأجهزة</p>
+      <p class="text-2xl font-bold text-blue-400">6</p>
+    </div>
+    <div class="bg-slate-900/80 border border-cyan-500/30 rounded-xl p-4 text-center shadow-lg">
+      <p class="text-xs text-gray-400 mb-1">المكسب اليومي (يُصفر 4 الفجر)</p>
+      <p id="daily-profit" class="text-2xl font-bold text-emerald-400">0.00 جنيه</p>
+    </div>
+    <div class="bg-slate-900/80 border border-cyan-500/30 rounded-xl p-4 text-center shadow-lg">
+      <p class="text-xs text-gray-400 mb-1">إجمالي الجلسات الحالية</p>
+      <p id="total-sessions" class="text-2xl font-bold text-purple-400">0.00 جنيه</p>
+    </div>
+    <div class="bg-slate-900/80 border border-amber-500/30 rounded-xl p-4 text-center shadow-lg col-span-2 sm:col-span-1">
+      <p class="text-xs text-gray-400 mb-1">المكسب الأسبوعي (يُصفر الجمعة 4 الفجر)</p>
+      <p id="weekly-profit" class="text-2xl font-bold text-amber-400">0.00 جنيه</p>
+    </div>
+  </div>
+
+  <!-- قائمة الأسعار -->
+  <div class="max-w-6xl mx-auto mb-6 bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+    <span class="font-bold text-cyan-400 flex items-center gap-2"><span>🔥</span> قائمة الأسعار:</span>
+    <div id="price-list" class="flex flex-wrap gap-4 text-gray-300">
+      <!-- تتولد ديناميكيًا من بيانات الأجهزة -->
+    </div>
+  </div>
+
+  <!-- شبكة الأجهزة -->
+  <div id="devices-container" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-10">
+    <!-- سيتم تعبئة الأجهزة عبر الجافاسكريبت -->
+  </div>
+
+  <!-- قائمة المنتجات والمنيو -->
+  <div class="max-w-6xl mx-auto bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl mb-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+      <div>
+        <h2 class="text-lg sm:text-xl font-bold text-cyan-400 flex items-center gap-2">
+          <span>🍽️</span> قائمة الأسعار (المنيو)
+        </h2>
+        <p class="text-xs text-gray-400 mt-1">يمكنك إضافة وتعديل وحذف المنتجات والأسعار بسهولة</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <input type="text" id="new-prod-emoji" placeholder="🍔" maxlength="4" class="bg-slate-950 border border-slate-700 text-gray-200 px-3 py-2 rounded-xl text-sm text-center focus:outline-none focus:border-cyan-500 w-14" title="الصق أو اكتب إيموجي للمنتج">
+        <input type="text" id="new-prod-name" placeholder="اسم المنتج..." class="bg-slate-950 border border-slate-700 text-gray-200 px-3 py-2 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-cyan-500 flex-1 sm:w-36">
+        <input type="text" inputmode="decimal" id="new-prod-price" placeholder="السعر" class="bg-slate-950 border border-slate-700 text-gray-200 px-3 py-2 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-cyan-500 w-24">
+        <button type="button" onclick="addNewProduct()" class="bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1 transition-colors">
+          <span>➕</span> إضافة
+        </button>
+      </div>
+    </div>
+
+    <div id="products-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <!-- المنتجات عبر الجافاسكريبت -->
+    </div>
+  </div>
+
+  <!-- سجل الأحداث والمكسب الأسبوعي -->
+  <div class="max-w-6xl mx-auto bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl mb-10">
+    <details>
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <h2 class="text-lg sm:text-xl font-bold text-amber-400 flex items-center gap-2">
+          <span>🕒</span> سجل الأحداث الأسبوعي
+        </h2>
+        <span class="text-xs text-gray-400">اضغط للعرض/الإخفاء</span>
+      </summary>
+      <p class="text-xs text-gray-400 mt-2 mb-3">يبدأ الأسبوع كل يوم جمعة الساعة 4:00 فجرًا بتوقيت مصر، ويُمسح تلقائيًا عند بداية الأسبوع التالي. تقدر كمان تمسح أي عنصر بنفسك أو تمسح السجل كله يدويًا.</p>
+      <button id="clear-log-btn" onclick="clearLogClick()" data-confirming="0" class="mb-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5">
+        <span>🗑️</span> مسح السجل بالكامل
+      </button>
+      <div id="log-container" class="space-y-1.5 max-h-80 overflow-y-auto pr-1 text-xs">
+        <!-- السجل عبر الجافاسكريبت -->
+      </div>
+    </details>
+  </div>
+
+  <!-- نافذة تنبيه انتهاء الوقت -->
+  <div id="alarm-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-red-500/50 p-6 rounded-2xl max-w-sm w-full text-center shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+      <span class="text-4xl block mb-3 animate-bounce">🔔</span>
+      <h3 class="text-xl font-bold text-red-400 mb-2">انتهى الوقت المحدد!</h3>
+      <div id="alarm-desc" class="text-gray-300 text-sm mb-6 space-y-1"></div>
+      <button onclick="dismissAlarm()" class="w-full bg-red-500 hover:bg-red-600 text-slate-950 font-bold py-3 rounded-xl transition-colors">
+        تم (إيقاف التنبيه)
+      </button>
+    </div>
+  </div>
+
+  <footer class="text-center text-xs text-gray-500 pb-4">
+    JOULIANO GAMING &bull; نظام إدارة صالات الألعاب والوقت والفواتير
+    <br><span class="text-cyan-600">— نسخة v4 —</span>
+  </footer>
+
+  <script>
+    // ============ تحويل الأرقام العربية/الفارسية إلى إنجليزية + تنظيف الإدخال ============
+    function normalizeNumber(str) {
+      if (str === null || str === undefined) return NaN;
+      const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+      const persian = '۰۱۲۳۴۵۶۷۸۹';
+      let out = '';
+      for (const ch of String(str)) {
+        const ai = arabicIndic.indexOf(ch);
+        const pi = persian.indexOf(ch);
+        if (ai > -1) out += ai;
+        else if (pi > -1) out += pi;
+        else if (ch === '،' || ch === ',') out += '.';
+        else out += ch;
+      }
+      out = out.replace(/[^\d.\-]/g, '');
+      const firstDot = out.indexOf('.');
+      if (firstDot > -1) {
+        out = out.slice(0, firstDot + 1) + out.slice(firstDot + 1).replace(/\./g, '');
+      }
+      return parseFloat(out);
+    }
+
+    // ============ رسائل داخل الصفحة (بدل alert/prompt اللي ممكن متتدعمش في بعض التطبيقات) ============
+    function showToast(msg) {
+      let toast = document.getElementById('toast-box');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-box';
+        toast.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f3f4f6;padding:10px 18px;border-radius:12px;font-size:13px;z-index:99999;border:1px solid #06b6d4;box-shadow:0 4px 12px rgba(0,0,0,0.4);max-width:90vw;text-align:center;transition:opacity 0.3s;';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      clearTimeout(toast._timeout);
+      toast._timeout = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+    }
+
+    // ============ تخزين آمن (نسخة محلية احتياطية) ============
+    const safeStorage = {
+      get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+      set(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+    };
+
+    // ============ ربط Firebase (قاعدة بيانات حقيقية تتزامن بين كل الأجهزة) ============
+    function whenFirebaseReady(callback) {
+      if (window.__firestore) { callback(window.__firestore); }
+      else { window.addEventListener('firebase-ready', () => callback(window.__firestore), { once: true }); }
+    }
+
+    function setSyncStatus(text) {
+      const el = document.getElementById('sync-status');
+      if (el) el.textContent = text;
+    }
+
+    function hideLoadingOverlay() {
+      const el = document.getElementById('loading-overlay');
+      if (el) el.style.display = 'none';
+    }
+
+    function buildStatePayload() {
+      return { devices, products, dailyProfit, weeklyProfit, eventLog, lastDailyResetDay, lastWeeklyResetDay };
+    }
+
+    function applyRemoteState(data) {
+      if (data.devices) devices = data.devices;
+      if (data.products) products = data.products;
+      if (typeof data.dailyProfit === 'number') dailyProfit = data.dailyProfit;
+      if (typeof data.weeklyProfit === 'number') weeklyProfit = data.weeklyProfit;
+      if (data.eventLog) eventLog = data.eventLog;
+      if (data.lastDailyResetDay !== undefined) lastDailyResetDay = data.lastDailyResetDay;
+      if (data.lastWeeklyResetDay !== undefined) lastWeeklyResetDay = data.lastWeeklyResetDay;
+      devices.forEach(d => {
+        if (d.ordersOpen === undefined) d.ordersOpen = false;
+        if (d.sessionStart === undefined) d.sessionStart = null;
+      });
+    }
+
+    function renderAll() {
+      renderPriceList();
+      renderDevices();
+      renderProducts();
+      renderLog();
+      updateStats();
+    }
+
+    function connectFirestore() {
+      whenFirebaseReady(async (fs) => {
+        try {
+          const snap = await fs.getDoc(fs.stateRef);
+          if (snap.exists()) {
+            applyRemoteState(snap.data());
+            renderAll();
+          } else {
+            await fs.setDoc(fs.stateRef, buildStatePayload());
+          }
+          setSyncStatus('🟢 متصل');
+          hideLoadingOverlay();
+
+          fs.onSnapshot(fs.stateRef, (snap2) => {
+            if (snap2.metadata.hasPendingWrites) return; // تجاهل صدى كتابتنا احنا
+            if (snap2.exists()) {
+              applyRemoteState(snap2.data());
+              renderAll();
+              setSyncStatus('🟢 متصل');
+            }
+          }, () => {
+            setSyncStatus('🔴 خطأ في الاتصال');
+          });
+        } catch (err) {
+          setSyncStatus('🟡 غير متصل - وضع محلي');
+          hideLoadingOverlay();
+        }
+      });
+      setTimeout(hideLoadingOverlay, 4000);
+    }
+
+    // ============ الوقت بتوقيت القاهرة/بني سويف (مصر) ============
+    function getCairoNow() {
+      try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Africa/Cairo',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false
+        }).formatToParts(new Date());
+        const map = {};
+        parts.forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
+        let hour = map.hour === '24' ? '00' : map.hour;
+        return new Date(`${map.year}-${map.month}-${map.day}T${hour}:${map.minute}:${map.second}`);
+      } catch (e) {
+        return new Date();
+      }
+    }
+
+    function formatLogTime(d) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${dd}/${mm} ${hh}:${mi}`;
+    }
+
+    // ============ البيانات ============
+    let devices = JSON.parse(safeStorage.get('jouliano_devices')) || [
+      { id: 1, name: 'بلايستيشن 5 - رقم 1', type: 'PS5', rate: 50, status: 'stopped', seconds: 0, multi: false, targetMinutes: 0, orders: [], ordersOpen: false },
+      { id: 2, name: 'بلايستيشن 5 - رقم 2', type: 'PS5', rate: 50, status: 'stopped', seconds: 0, multi: false, targetMinutes: 0, orders: [], ordersOpen: false },
+      { id: 3, name: 'بلايستيشن 4 - رقم 3', type: 'PS4', rate: 40, status: 'stopped', seconds: 0, multi: false, targetMinutes: 0, orders: [], ordersOpen: false },
+      { id: 4, name: 'بلايستيشن 4 - رقم 4', type: 'PS4', rate: 40, status: 'stopped', seconds: 0, multi: false, targetMinutes: 0, orders: [], ordersOpen: false },
+      { id: 5, name: 'بلايستيشن 4 - رقم 5', type: 'PS4', rate: 40, status: 'stopped', seconds: 0, multi: false, targetMinutes: 0, orders: [], ordersOpen: false },
+      { id: 6, name: 'طاولة بينج بونج', type: 'TABLE', rate: 40, status: 'stopped', seconds: 0, multi: false, targetMinutes: 0, orders: [], ordersOpen: false }
+    ];
+    // ضمان وجود الحقول الجديدة في بيانات قديمة محفوظة مسبقًا
+    devices.forEach(d => {
+      if (d.ordersOpen === undefined) d.ordersOpen = false;
+      if (d.sessionStart === undefined) d.sessionStart = null;
+      // لو الجهاز كان شغال من قبل وميعادش عنده وقت بداية حقيقي، اعتبر دلوقتي هو البداية
+      if (d.status === 'running' && !d.sessionStart) d.sessionStart = Date.now();
+    });
+
+    // ============ حساب الوقت الحقيقي (بيشتغل صح حتى لو الموقع كان مقفول/بره الشاشة) ============
+    function getElapsedSeconds(device) {
+      if (device.status === 'running' && device.sessionStart) {
+        const extra = Math.floor((Date.now() - device.sessionStart) / 1000);
+        return device.seconds + Math.max(0, extra);
+      }
+      return device.seconds;
+    }
+
+    let products = JSON.parse(safeStorage.get('jouliano_products')) || [
+      { id: 1, name: 'إندومي', price: 15, icon: '🍜' },
+      { id: 2, name: 'موتزاريلا', price: 5, icon: '🧀' },
+      { id: 3, name: 'باربيكيو', price: 5, icon: '🍖' },
+      { id: 4, name: 'تشيز صوص', price: 5, icon: '🧀' },
+      { id: 5, name: 'شاي', price: 15, icon: '🍵' },
+      { id: 6, name: 'قهوة', price: 25, icon: '☕' },
+      { id: 7, name: 'شيبسي', price: 10, icon: '🍟' }
+    ];
+
+    let dailyProfit = parseFloat(safeStorage.get('jouliano_daily_profit')) || 0;
+    let weeklyProfit = parseFloat(safeStorage.get('jouliano_weekly_profit')) || 0;
+    let eventLog = JSON.parse(safeStorage.get('jouliano_event_log')) || [];
+    let lastDailyResetDay = safeStorage.get('jouliano_last_daily_reset');
+    let lastWeeklyResetDay = safeStorage.get('jouliano_last_weekly_reset');
+
+    let activeAlarms = []; // أسماء الأجهزة اللي التنبيه شغال بسببها
+    let alarmVibrateInterval = null;
+    let alarmAudioInterval = null;
+    let audioCtx = null;
+
+    function saveData() {
+      safeStorage.set('jouliano_devices', JSON.stringify(devices));
+      safeStorage.set('jouliano_products', JSON.stringify(products));
+      safeStorage.set('jouliano_daily_profit', dailyProfit);
+      safeStorage.set('jouliano_weekly_profit', weeklyProfit);
+      safeStorage.set('jouliano_event_log', JSON.stringify(eventLog));
+
+      if (window.__firestore) {
+        window.__firestore.setDoc(window.__firestore.stateRef, buildStatePayload())
+          .then(() => setSyncStatus('🟢 متصل'))
+          .catch(() => { setSyncStatus('🟡 غير متصل'); });
+      }
+    }
+
+    function addLogEntry(text) {
+      const cairoNow = getCairoNow();
+      eventLog.unshift({ time: formatLogTime(cairoNow), text });
+      if (eventLog.length > 300) eventLog = eventLog.slice(0, 300);
+      saveData();
+      renderLog();
+    }
+
+    // ============ تصفير يومي (4 فجرًا) وأسبوعي (الجمعة 4 فجرًا) بتوقيت مصر ============
+    function checkResets() {
+      const cairoNow = getCairoNow();
+
+      // --- التصفير اليومي ---
+      let dayBoundary = new Date(cairoNow);
+      if (cairoNow.getHours() < 4) dayBoundary.setDate(dayBoundary.getDate() - 1);
+      const dayBoundaryStr = dayBoundary.toDateString();
+
+      if (lastDailyResetDay === null) {
+        lastDailyResetDay = dayBoundaryStr;
+        safeStorage.set('jouliano_last_daily_reset', lastDailyResetDay);
+      } else if (lastDailyResetDay !== dayBoundaryStr) {
+        dailyProfit = 0;
+        lastDailyResetDay = dayBoundaryStr;
+        safeStorage.set('jouliano_last_daily_reset', lastDailyResetDay);
+        saveData();
+        addLogEntry('⏰ تم تصفير المكسب اليومي تلقائيًا (4:00 فجرًا)');
+        updateStats();
+      }
+
+      // --- التصفير الأسبوعي (الجمعة 4 فجرًا) ---
+      let weekBoundary = new Date(cairoNow);
+      const day = weekBoundary.getDay(); // الجمعة = 5
+      let diff = (day - 5 + 7) % 7;
+      weekBoundary.setDate(weekBoundary.getDate() - diff);
+      weekBoundary.setHours(4, 0, 0, 0);
+      if (weekBoundary.getTime() > cairoNow.getTime()) {
+        weekBoundary.setDate(weekBoundary.getDate() - 7);
+      }
+      const weekBoundaryStr = weekBoundary.toDateString();
+
+      if (lastWeeklyResetDay === null) {
+        lastWeeklyResetDay = weekBoundaryStr;
+        safeStorage.set('jouliano_last_weekly_reset', lastWeeklyResetDay);
+      } else if (lastWeeklyResetDay !== weekBoundaryStr) {
+        weeklyProfit = 0;
+        eventLog = [];
+        lastWeeklyResetDay = weekBoundaryStr;
+        safeStorage.set('jouliano_last_weekly_reset', lastWeeklyResetDay);
+        saveData();
+        addLogEntry('🗓️ بداية أسبوع جديد - تم مسح السجل والمكسب الأسبوعي (الجمعة 4:00 فجرًا)');
+        updateStats();
+      }
+    }
+
+    // ============ التنبيه الصوتي/الاهتزاز ============
+    function beep() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } catch (e) {}
+    }
+
+    function requestNotifyPermission() {
+      try {
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      } catch (e) {}
+    }
+
+    function triggerAlarm(device) {
+      if (!activeAlarms.includes(device.id)) activeAlarms.push(device.id);
+      renderAlarmModal();
+      document.getElementById('alarm-modal').classList.remove('hidden');
+
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('انتهى الوقت المحدد!', {
+            body: `انتهى الوقت المحدد للجهاز: ${device.name}`,
+            requireInteraction: true,
+            tag: 'jouliano-alarm-' + device.id
+          });
+        }
+      } catch (e) {}
+
+      if (!alarmVibrateInterval) {
+        alarmVibrateInterval = setInterval(() => {
+          if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+        }, 1200);
+      }
+      if (!alarmAudioInterval) {
+        beep();
+        alarmAudioInterval = setInterval(beep, 1500);
+      }
+    }
+
+    function renderAlarmModal() {
+      const desc = document.getElementById('alarm-desc');
+      desc.innerHTML = activeAlarms.map(id => {
+        const d = devices.find(dv => dv.id === id);
+        return d ? `<div>انتهى وقت: <strong class="text-red-300">${d.name}</strong></div>` : '';
+      }).join('');
+    }
+
+    function dismissAlarm() {
+      document.getElementById('alarm-modal').classList.add('hidden');
+      activeAlarms = [];
+      if (alarmVibrateInterval) { clearInterval(alarmVibrateInterval); alarmVibrateInterval = null; }
+      if (alarmAudioInterval) { clearInterval(alarmAudioInterval); alarmAudioInterval = null; }
+      if (navigator.vibrate) navigator.vibrate(0);
+    }
+
+    // ============ حسابات ============
+    function formatTime(totalSeconds) {
+      const hrs = Math.floor(totalSeconds / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function calculateTimeCost(device) {
+      const hours = getElapsedSeconds(device) / 3600;
+      let rate = device.rate;
+      if (device.multi && device.type !== 'TABLE') rate += 5;
+      return hours * rate;
+    }
+
+    function calculateTotalSession(device) {
+      const timeCost = calculateTimeCost(device);
+      const ordersCost = device.orders.reduce((sum, o) => sum + (o.price * o.qty), 0);
+      return timeCost + ordersCost;
+    }
+
+    function updateStats() {
+      const activeCount = devices.filter(d => d.status === 'running').length;
+      const totalSessions = devices.reduce((sum, d) => sum + calculateTotalSession(d), 0);
+
+      document.getElementById('active-count').innerText = activeCount;
+      document.getElementById('daily-profit').innerText = dailyProfit.toFixed(2) + ' جنيه';
+      document.getElementById('total-sessions').innerText = totalSessions.toFixed(2) + ' جنيه';
+      document.getElementById('weekly-profit').innerText = weeklyProfit.toFixed(2) + ' جنيه';
+    }
+
+    // ============ التحكم بالأجهزة ============
+    function startDevice(id) {
+      const device = devices.find(d => d.id === id);
+      device.status = 'running';
+      device.sessionStart = Date.now();
+      addLogEntry(`▶️ بدء تشغيل: ${device.name}`);
+      saveData(); renderDevices(); updateStats();
+    }
+
+    function resumeDevice(id) {
+      const device = devices.find(d => d.id === id);
+      device.status = 'running';
+      device.sessionStart = Date.now();
+      addLogEntry(`▶️ استئناف: ${device.name}`);
+      saveData(); renderDevices(); updateStats();
+    }
+
+    function pauseDevice(id) {
+      const device = devices.find(d => d.id === id);
+      if (device.status === 'running') {
+        device.seconds = getElapsedSeconds(device);
+        device.sessionStart = null;
+        device.status = 'paused';
+        addLogEntry(`⏸️ إيقاف مؤقت: ${device.name}`);
+        saveData(); renderDevices(); updateStats();
+      }
+    }
+
+    function finishDevice(id) {
+      const device = devices.find(d => d.id === id);
+      const total = calculateTotalSession(device);
+      dailyProfit += total;
+      weeklyProfit += total;
+      addLogEntry(`⏹️ إنهاء جلسة: ${device.name} — الإجمالي: ${total.toFixed(2)} جنيه`);
+      device.status = 'stopped';
+      device.seconds = 0;
+      device.sessionStart = null;
+      device.orders = [];
+      device.targetMinutes = 0;
+      device.ordersOpen = false;
+      activeAlarms = activeAlarms.filter(aid => aid !== id);
+      if (activeAlarms.length === 0) dismissAlarm();
+      saveData(); renderDevices(); updateStats();
+      showToast('تم إنهاء الجلسة وحساب المبلغ');
+    }
+
+    function finishDeviceNoCharge(id) {
+      const device = devices.find(d => d.id === id);
+      const elapsed = getElapsedSeconds(device);
+      addLogEntry(`🚫 إغلاق بدون حساب: ${device.name} (كان الوقت ${formatTime(elapsed)} + طلبات ${device.orders.reduce((s,o)=>s+(o.price*o.qty),0).toFixed(2)} جنيه — لم تُحتسب)`);
+      device.status = 'stopped';
+      device.seconds = 0;
+      device.sessionStart = null;
+      device.orders = [];
+      device.targetMinutes = 0;
+      device.ordersOpen = false;
+      activeAlarms = activeAlarms.filter(aid => aid !== id);
+      if (activeAlarms.length === 0) dismissAlarm();
+      saveData(); renderDevices(); updateStats();
+      showToast('تم الإغلاق بدون حساب أي مبلغ');
+    }
+
+    function finishNoChargeClick(id) {
+      const btn = document.getElementById(`noCharge-${id}`);
+      if (!btn) return;
+      if (btn.dataset.confirming === '1') {
+        finishDeviceNoCharge(id);
+      } else {
+        btn.dataset.confirming = '1';
+        btn.innerHTML = '<span>⚠️</span> اضغط تاني للتأكيد (بدون فلوس)';
+        setTimeout(() => {
+          if (btn.dataset.confirming === '1') {
+            btn.dataset.confirming = '0';
+            btn.innerHTML = '<span>🚫</span> إغلاق بدون حساب المال';
+          }
+        }, 3000);
+      }
+    }
+
+    function toggleMulti(id) {
+      const device = devices.find(d => d.id === id);
+      device.multi = !device.multi;
+      saveData(); renderDevices(); updateStats();
+    }
+
+    function updateTargetTime(id, val) {
+      const device = devices.find(d => d.id === id);
+      const num = normalizeNumber(val);
+      device.targetMinutes = isNaN(num) ? 0 : Math.max(0, Math.floor(num));
+      saveData();
+      requestNotifyPermission();
+    }
+
+    let editingRateId = null;
+
+    function startEditRate(id) {
+      editingRateId = id;
+      renderDevices();
+      setTimeout(() => {
+        const input = document.querySelector(`[data-rate-input="${id}"]`);
+        if (input) { input.focus(); input.select(); }
+      }, 50);
+    }
+
+    function cancelEditRate() {
+      editingRateId = null;
+      renderDevices();
+    }
+
+    function confirmEditRate(id) {
+      const input = document.querySelector(`[data-rate-input="${id}"]`);
+      if (!input) return;
+      const newRate = normalizeNumber(input.value);
+      if (isNaN(newRate) || newRate < 0) {
+        showToast('من فضلك أدخل رقم صحيح للسعر');
+        return;
+      }
+      const device = devices.find(d => d.id === id);
+      device.rate = newRate;
+      addLogEntry(`✏️ تعديل سعر ${device.name} إلى ${newRate} جنيه/ساعة`);
+      editingRateId = null;
+      saveData(); renderDevices(); renderPriceList(); updateStats();
+      showToast('تم تعديل السعر بنجاح');
+    }
+
+    function toggleOrdersPanel(id) {
+      const device = devices.find(d => d.id === id);
+      device.ordersOpen = !device.ordersOpen;
+      saveData();
+    }
+
+    function addOrder(deviceId, prodId) {
+      const device = devices.find(d => d.id === deviceId);
+      const prod = products.find(p => p.id === prodId);
+      const existing = device.orders.find(o => o.id === prodId);
+      if (existing) {
+        existing.qty++;
+      } else {
+        device.orders.push({ ...prod, qty: 1 });
+      }
+      device.ordersOpen = true;
+      saveData();
+      renderDevices();
+      updateStats();
+    }
+
+    function removeOrder(deviceId, prodId) {
+      const device = devices.find(d => d.id === deviceId);
+      device.orders = device.orders.map(o => {
+        if (o.id === prodId) o.qty--;
+        return o;
+      }).filter(o => o.qty > 0);
+      device.ordersOpen = true;
+      saveData();
+      renderDevices();
+      updateStats();
+    }
+
+    // ============ المنتجات ============
+    function addNewProduct(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const nameInput = document.getElementById('new-prod-name');
+      const priceInput = document.getElementById('new-prod-price');
+      const emojiInput = document.getElementById('new-prod-emoji');
+
+      const name = nameInput.value.trim();
+      const price = normalizeNumber(priceInput.value);
+      const icon = emojiInput.value.trim() || '🍽️';
+
+      if (!name) { showToast('من فضلك اكتب اسم المنتج'); return; }
+      if (isNaN(price) || price < 0) { showToast('من فضلك أدخل سعر صحيح'); return; }
+
+      products.push({ id: Date.now(), name, price, icon });
+      nameInput.value = '';
+      priceInput.value = '';
+      emojiInput.value = '';
+
+      addLogEntry(`🆕 إضافة منتج جديد: ${icon} ${name} (${price} جنيه)`);
+      saveData();
+      renderProducts();
+      renderDevices();
+    }
+
+    function deleteProduct(id) {
+      const prod = products.find(p => p.id === id);
+      products = products.filter(p => p.id !== id);
+      if (prod) {
+        addLogEntry(`🗑️ حذف منتج: ${prod.icon} ${prod.name}`);
+        showToast(`تم حذف ${prod.name}`);
+      }
+      saveData();
+      renderProducts();
+      renderDevices();
+    }
+
+    // ============ قائمة الأسعار العلوية (ديناميكية) ============
+    function renderPriceList() {
+      const container = document.getElementById('price-list');
+      const seen = {};
+      const items = [];
+      devices.forEach(d => {
+        const key = d.type;
+        if (!seen[key]) {
+          seen[key] = true;
+          const label = d.type === 'PS5' ? 'بلايستيشن 5' : d.type === 'PS4' ? 'بلايستيشن 4' : d.name;
+          items.push(`<span class="bg-slate-800 px-3 py-1 rounded-lg">${label}: <strong class="text-cyan-400">${d.rate} جنيه / ساعة</strong></span>`);
+        }
+      });
+      container.innerHTML = items.join('');
+    }
+
+    // ============ عرض الأجهزة ============
+    function renderDevices() {
+      const container = document.getElementById('devices-container');
+      container.innerHTML = '';
+
+      devices.forEach(device => {
+        const isRunning = device.status === 'running';
+        const isPaused = device.status === 'paused';
+        const timeCost = calculateTimeCost(device);
+        const badgeColor = device.type === 'PS5' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : device.type === 'PS4' ? 'bg-purple-500/20 text-purple-300 border-purple-400/40' : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40';
+
+        let statusText = 'متوقف';
+        let statusDot = 'bg-gray-500';
+        if (isRunning) { statusText = 'يعمل الآن'; statusDot = 'bg-emerald-400 animate-ping'; }
+        else if (isPaused) { statusText = 'متوقف مؤقتًا'; statusDot = 'bg-amber-400'; }
+
+        let controlsHtml = '';
+        if (!isRunning && !isPaused) {
+          controlsHtml = `
+            <button onclick="startDevice(${device.id})" class="w-full py-3 px-2 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/50">
+              <span>▶️</span> ابدأ الوقت
+            </button>`;
+        } else if (isRunning) {
+          controlsHtml = `
+            <button onclick="pauseDevice(${device.id})" class="w-full py-3 px-2 rounded-xl font-bold flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50">
+              <span>⏸️</span> إيقاف مؤقت
+            </button>
+            <button onclick="finishDevice(${device.id})" class="w-full py-3 px-2 rounded-xl font-bold flex items-center justify-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50">
+              <span>⏹️</span> إنهاء الجلسة
+            </button>
+            <button id="noCharge-${device.id}" data-confirming="0" onclick="finishNoChargeClick(${device.id})" class="w-full py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-gray-400 border border-slate-700 text-xs col-span-2">
+              <span>🚫</span> إغلاق بدون حساب المال
+            </button>`;
+        } else if (isPaused) {
+          controlsHtml = `
+            <button onclick="resumeDevice(${device.id})" class="w-full py-3 px-2 rounded-xl font-bold flex items-center justify-center gap-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50">
+              <span>▶️</span> استئناف
+            </button>
+            <button onclick="finishDevice(${device.id})" class="w-full py-3 px-2 rounded-xl font-bold flex items-center justify-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/50">
+              <span>⏹️</span> إنهاء الجلسة
+            </button>
+            <button id="noCharge-${device.id}" data-confirming="0" onclick="finishNoChargeClick(${device.id})" class="w-full py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-gray-400 border border-slate-700 text-xs col-span-2">
+              <span>🚫</span> إغلاق بدون حساب المال
+            </button>`;
+        }
+
+        const cardHtml = `
+          <div class="rounded-2xl border transition-all duration-300 p-5 flex flex-col justify-between backdrop-blur-md ${isRunning ? 'bg-slate-900/90 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.15)]' : 'bg-slate-900/60 border-slate-800'}">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <div class="p-2 rounded-xl border ${badgeColor}"><span>🎮</span></div>
+                  <div>
+                    <h3 class="font-bold text-base sm:text-lg text-gray-100">${device.name}</h3>
+                    ${editingRateId === device.id ? `
+                      <span class="flex items-center gap-1 mt-0.5">
+                        <input type="text" inputmode="decimal" data-rate-input="${device.id}" value="${device.rate}" class="bg-slate-950 border border-cyan-500 text-cyan-300 px-2 py-0.5 rounded w-16 text-xs text-center" onkeydown="if(event.key==='Enter')confirmEditRate(${device.id})">
+                        <button onclick="confirmEditRate(${device.id})" class="text-emerald-400 hover:text-emerald-300" title="تأكيد"><span>✅</span></button>
+                        <button onclick="cancelEditRate()" class="text-red-400 hover:text-red-300 text-sm" title="إلغاء">❌</button>
+                      </span>
+                    ` : `
+                      <span class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                        <span>⏱️</span> ${device.rate} جنيه / ساعة ${device.multi && device.type !== 'TABLE' ? '<span class="text-amber-400 font-bold">(+5 جماعي)</span>' : ''}
+                        <button onclick="startEditRate(${device.id})" class="text-cyan-400 hover:text-cyan-300 ml-1" title="تعديل السعر"><span>✏️</span></button>
+                      </span>
+                    `}
+                  </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeColor}">${device.type}</span>
+              </div>
+
+              <div class="flex items-center justify-between bg-slate-950/60 p-3 rounded-xl mb-4 border border-slate-800">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full ${statusDot}"></span>
+                  <span class="text-xs font-medium text-gray-300">${statusText}</span>
+                </div>
+                ${device.type !== 'TABLE' ? `
+                  <button onclick="toggleMulti(${device.id})" class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border ${device.multi ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-gray-400 border-slate-700'}">
+                    <span>👥</span> لعب جماعي (+5ج)
+                  </button>
+                ` : ''}
+              </div>
+
+              <div class="mb-3 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-gray-400">تحديد وقت (بالدقائق):</span>
+                <input type="text" inputmode="numeric" value="${device.targetMinutes || ''}" placeholder="بلا حد" onchange="updateTargetTime(${device.id}, this.value)" class="bg-slate-900 border border-slate-700 text-cyan-300 px-2 py-1 rounded w-20 text-center">
+              </div>
+
+              <div class="text-center bg-slate-950/80 p-4 rounded-xl border border-slate-800 mb-4">
+                <div class="text-2xl sm:text-3xl font-mono font-bold tracking-wider text-cyan-300 mb-1" data-timer="${device.id}">${formatTime(getElapsedSeconds(device))}</div>
+                <div class="text-xs text-gray-400">تكلفة الوقت: <strong class="text-emerald-400" data-cost="${device.id}">${timeCost.toFixed(2)} جنيه</strong></div>
+              </div>
+
+              <div class="grid ${isRunning || isPaused ? 'grid-cols-2' : 'grid-cols-1'} gap-2 mb-4">
+                ${controlsHtml}
+              </div>
+
+              <div class="bg-slate-950/70 border border-cyan-800/40 rounded-xl p-3 mb-4 text-xs space-y-1.5">
+                <div class="flex items-center justify-between text-gray-300">
+                  <span class="flex items-center gap-1.5">⏱️ وقت</span>
+                  <span data-bill-time="${device.id}" class="font-semibold">${timeCost.toFixed(2)} جنيه</span>
+                </div>
+                <div class="flex items-center justify-between text-gray-300">
+                  <span class="flex items-center gap-1.5">🛒 طلبات</span>
+                  <span data-bill-orders="${device.id}" class="font-semibold">${device.orders.reduce((s, o) => s + (o.price * o.qty), 0).toFixed(2)} جنيه</span>
+                </div>
+                <div class="flex items-center justify-between border-t border-cyan-800/40 pt-1.5 text-cyan-300 font-bold">
+                  <span class="flex items-center gap-1.5">💰 الإجمالي</span>
+                  <span data-bill-total="${device.id}">${calculateTotalSession(device).toFixed(2)} جنيه</span>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-3 border-t border-slate-800">
+                <details class="group" ${device.ordersOpen ? 'open' : ''} ontoggle="toggleOrdersPanel(${device.id})">
+                  <summary class="flex items-center justify-between text-xs font-semibold text-gray-300 cursor-pointer list-none py-1">
+                    <span class="flex items-center gap-1.5"><span>🛒</span> الطلبات</span>
+                    <span class="text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded-md border border-cyan-800/50">${device.orders.reduce((s, o) => s + (o.price * o.qty), 0).toFixed(2)} جنيه</span>
+                  </summary>
+                  <div class="mt-2 space-y-2 max-h-36 overflow-y-auto pr-1">
+                    ${device.orders.length === 0 ? '<p class="text-xs text-gray-500 text-center py-2">لا توجد طلبات</p>' : device.orders.map(o => `
+                      <div class="flex items-center justify-between bg-slate-950/40 px-2.5 py-1.5 rounded-lg text-xs border border-slate-800">
+                        <span>${o.icon} ${o.name} (x${o.qty})</span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-cyan-400">${o.price * o.qty} ج</span>
+                          <button onclick="removeOrder(${device.id}, ${o.id})" class="text-red-400"><span>🗑️</span></button>
+                        </div>
+                      </div>
+                    `).join('')}
+
+                    <div class="grid grid-cols-2 gap-1.5 pt-1">
+                      ${products.map(p => `
+                        <button onclick="addOrder(${device.id}, ${p.id})" class="bg-slate-800 hover:bg-slate-700 text-gray-300 text-[11px] py-1 px-2 rounded flex items-center justify-between border border-slate-700/50">
+                          <span>${p.icon} ${p.name}</span>
+                          <span class="text-cyan-300 font-bold">+${p.price}</span>
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        `;
+
+        container.innerHTML += cardHtml;
+      });
+    }
+
+    function renderProducts() {
+      const container = document.getElementById('products-container');
+      container.innerHTML = '';
+
+      products.forEach(prod => {
+        const prodHtml = `
+          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex flex-col items-center gap-2 text-center">
+            <span class="text-2xl">${prod.icon}</span>
+            <span class="text-sm font-bold text-gray-200">${prod.name}</span>
+            <span class="text-xs text-cyan-400 font-bold">${prod.price} جنيه</span>
+            <button onclick="deleteProduct(${prod.id})" class="text-red-400 text-xs flex items-center gap-1 mt-1 hover:text-red-300">
+              <span>🗑️</span> حذف
+            </button>
+          </div>
+        `;
+        container.innerHTML += prodHtml;
+      });
+    }
+
+    function renderLog() {
+      const container = document.getElementById('log-container');
+      if (eventLog.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-3">لا توجد أحداث مسجلة بعد هذا الأسبوع</p>';
+        return;
+      }
+      container.innerHTML = eventLog.map((entry, index) => `
+        <div class="flex items-start justify-between gap-2 bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-1.5">
+          <span class="text-gray-300">${entry.text}</span>
+          <span class="flex items-center gap-2 whitespace-nowrap">
+            <span class="text-gray-500">${entry.time}</span>
+            <button onclick="deleteLogEntry(${index})" class="text-red-400 hover:text-red-300 text-sm" title="حذف هذا العنصر">🗑️</button>
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function deleteLogEntry(index) {
+      eventLog.splice(index, 1);
+      saveData();
+      renderLog();
+    }
+
+    let clearLogConfirmTimeout = null;
+    function clearLogClick() {
+      const btn = document.getElementById('clear-log-btn');
+      if (btn.dataset.confirming === '1') {
+        eventLog = [];
+        saveData();
+        renderLog();
+        btn.dataset.confirming = '0';
+        btn.innerHTML = '<span>🗑️</span> مسح السجل بالكامل';
+        clearTimeout(clearLogConfirmTimeout);
+        showToast('تم مسح السجل بالكامل');
+      } else {
+        btn.dataset.confirming = '1';
+        btn.innerHTML = '<span>⚠️</span> اضغط تاني للتأكيد';
+        clearLogConfirmTimeout = setTimeout(() => {
+          btn.dataset.confirming = '0';
+          btn.innerHTML = '<span>🗑️</span> مسح السجل بالكامل';
+        }, 3000);
+      }
+    }
+
+    // ============ العداد اللحظي (يعتمد على الوقت الحقيقي - يشتغل صح حتى لو الموقع كان بره الشاشة) ============
+    function tickTimers() {
+      let needsFullRender = false;
+      let anyRunning = false;
+
+      devices.forEach(device => {
+        if (device.status === 'running') {
+          anyRunning = true;
+          const elapsed = getElapsedSeconds(device);
+
+          if (device.targetMinutes > 0 && elapsed >= device.targetMinutes * 60) {
+            device.seconds = elapsed;
+            device.sessionStart = null;
+            device.status = 'paused';
+            needsFullRender = true;
+            saveData();
+            triggerAlarm(device);
+          }
+        }
+      });
+
+      if (needsFullRender) {
+        renderDevices();
+        updateStats();
+      } else if (anyRunning) {
+        devices.forEach(device => {
+          if (device.status === 'running') {
+            const elapsed = getElapsedSeconds(device);
+            const timeEl = document.querySelector(`[data-timer="${device.id}"]`);
+            const costEl = document.querySelector(`[data-cost="${device.id}"]`);
+            if (timeEl) timeEl.textContent = formatTime(elapsed);
+            if (costEl) costEl.textContent = calculateTimeCost(device).toFixed(2) + ' جنيه';
+            const billTimeEl = document.querySelector(`[data-bill-time="${device.id}"]`);
+            const billTotalEl = document.querySelector(`[data-bill-total="${device.id}"]`);
+            if (billTimeEl) billTimeEl.textContent = calculateTimeCost(device).toFixed(2) + ' جنيه';
+            if (billTotalEl) billTotalEl.textContent = calculateTotalSession(device).toFixed(2) + ' جنيه';
+          }
+        });
+        updateStats();
+      }
+    }
+
+    // لما المستخدم يرجع للصفحة (بعد ما كانت بره الشاشة/في الخلفية) نحدث فورًا
+    // ونتأكد إن أي وقت محدد خلص أثناء غيابه يتم اكتشافه فورًا
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        tickTimers();
+      }
+    });
+    window.addEventListener('focus', tickTimers);
+    window.addEventListener('pageshow', tickTimers);
+
+    setInterval(tickTimers, 1000);
+    setInterval(checkResets, 1000);
+
+    // ============ التشغيل الأولي ============
+    checkResets();
+    renderPriceList();
+    renderDevices();
+    renderProducts();
+    renderLog();
+    updateStats();
+    requestNotifyPermission();
+    tickTimers();
+    connectFirestore();
+  </script>
+
+</body>
+</html>
